@@ -32,10 +32,10 @@ syntax Expr
   )
   > set_var: Expr "=" Expr
   > \in: Expr "in" Expr
-  > and: Expr "and" Expr
   | negation: "no" Expr
   | not_in: Expr "not in" Expr
   | right \tuple: Expr "-\>" Expr
+  > right and: Expr "and" Expr
   ;
 
 //syntax PredInput

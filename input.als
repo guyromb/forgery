@@ -13,5 +13,6 @@ pred Drop (c, c' : Course, s: Student) {
 	s not in c'.roster 
 }
 pred SubmitForPair (c, c' : Course, s1 : Student, s2 : Student, bNew : Submission) {
-	c'.roster = c.roster + bNew and no c'.work [bNew]
+	// pre-condition
+	c'.work = c.work + (s1 -> bNew ) + (s2 -> bNew )
 }

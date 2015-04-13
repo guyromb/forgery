@@ -56,27 +56,27 @@ public str Generate(list[Specification] specifications) {
 					affected_table_name = name;
 				}
 				for(/add(op1, op2) := a) {
+					str columns = "";
+					str vars = "";
 					// we don't really need to add the table itself again, just the new record!
 					if(!(/table(name) := op1 && name == affected_table_name)) {
-						str columns = a_spec + "_id";
-						for(/input(vname, vtype) := a) {
-							columns += toLowerCase(", " + vtype + "_id");
-							println("dafuk?");
-						}
-						p_content += "INSERT INTO `" + affected_table_name + "` (" + columns + " ...";
-						print("nice!");
-					}
-					if(!(/table(name) := op2 && name == affected_table_name)) {
-						str columns = a_spec + "_id";
-						str vars = a_before_var;
-						for(/input(vname, vtype) := a) {
+						columns = a_spec + "_id";
+						vars += a_before_var;
+						for(/input(vname, vtype) := op1) {
 							columns += toLowerCase(", " + vtype + "_id");
 							vars += ", " + vname;
-							println("dafuk?");
 						}
-						p_content += "\tINSERT INTO `" + affected_table_name + "` (" + columns + ") VALUES (" + vars + ");\n";
-						print("nice!");
 					}
+					if(!(/table(name) := op2 && name == affected_table_name)) {
+						columns = a_spec + "_id";
+						vars += a_before_var;
+						for(/input(vname, vtype) := op2) {
+							columns += toLowerCase(", " + vtype + "_id");
+							vars += ", " + vname;
+						}
+					}
+					// TODO:::: CHECK IF columns = columns (same relation/data type!)
+					p_content += "\tINSERT INTO `" + affected_table_name + "` (" + columns + ") VALUES (" + vars + ");\n";
 				}
 				for(/notexists(op1, op2) := a) {
 					str where_table = "";
