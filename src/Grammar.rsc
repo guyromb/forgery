@@ -49,7 +49,7 @@ syntax PredInput = pred_input: "," VariableName ":" SigName;
 
 lexical PredName = pred_name: [A-Za-z]+ pred_name;
 
-lexical VariableName = variable_name: [A-Za-z\']+ variable_name;
+lexical VariableName = variable_name: [0-9A-Za-z\']+ variable_name;
 
 // signatures
 

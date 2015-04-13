@@ -2,6 +2,7 @@ module Generators::Maps::Predicates
 
 import ExtendedAst;
 import List;
+import Set;
 import IO;
 import Node;
 
@@ -49,6 +50,7 @@ public map[str, map[str, value]] Generate(Specifications specifications) {
 			case point(variable(_), variable(str tableName)) => table(tableName)
 			case set_var(table(str tableName), op2) => set_var(affected_table(tableName), op2)
 			case negation(\join(op1, op2)) => notexists(op1, op2)
+			//case not_in(Expr(op1), table(op2)) => del(op1, op2)
 			//case variable(str varName) => input(varName, sig_vars[varName])
 			//case add(op1, op2) => add(op1, op2)
 		}
@@ -64,11 +66,14 @@ public map[str, map[str, value]] Generate(Specifications specifications) {
 			exprs += op2;
 		}
 		
+		if(isEmpty(exprs)) {
+			exprs = {expression};
+		}
+		
 		structure[pred_name] += ("body": exprs);
 		
 		
 	}
-	
 	println(structure);
 	return structure;
 }

@@ -4,6 +4,7 @@ import Ast;
 import IO;
 import List;
 import Map;
+import Set;
 import String;
 import Generators::Maps::Signatures;
 import Generators::Maps::Predicates;
@@ -13,11 +14,11 @@ public str Generate(list[Specification] specifications) {
 	str query = "";
 	
 	// procedures for non-relational signarue tables
-	map[str, list[str]] structure = Generators::Maps::Signatures::Generate(specifications);
+	map[str, set[str]] structure = Generators::Maps::Signatures::Generate(specifications);
 	for(table <- structure) {
 		str p_content = "\tINSERT INTO `" + toLowerCase(table) + "` (`value`) VALUES (strVar);";
 		list[str] input = ["IN strVar VARCHAR(100)"];
-		if(size(structure[table]) == 0) // only if it's not a relation
+		if(isEmpty(structure[table])) // only if it's not a relation
 			query += ProcedureWrapperQuery("create_" + table, input, p_content) + "\n\r";
 	}
 	
@@ -102,15 +103,37 @@ public str Generate(list[Specification] specifications) {
 					//	println("dafuk?");
 					//}
 					
-					p_content += "\tIF NOT EXISTS (";
+					
+					p_content += "\tIF EXISTS (";
 					p_content += "SELECT * FROM `<where_table>` WHERE `<where_id_name>_id`=<where_var_name>";
+					p_content += " AND `<a_spec>_id`=<a_before_var>";
 					p_content += ") THEN\n";
 					p_content += "\t\tSELECT `An error has occurred, operation rollbacked and the stored procedure was terminated`;\n";
 					p_content += "\t\tROLLBACK;\n";
 					p_content += "\tEND IF;";
-					print("extreme!");
 				}
 				// TODO handle exists ..
+				for(/not_in(op1, op2) := a) {
+					str where_table = "";
+					str where_id_name = "";
+					str where_var_name = "";
+					if(/table(name) := op2) {
+						where_table = toLowerCase(name);
+					}
+					else {
+						throw "error";
+					}
+					
+					if(/input(var_name, id_name) := op1) {
+						where_id_name = toLowerCase(id_name);
+						where_var_name = var_name;
+					}
+					else {
+						throw "error";
+					}
+					p_content += "DELETE FROM `<where_table>` WHERE `<where_id_name>_id`=<where_var_name>";
+					p_content += " AND `<a_spec>_id`=<a_before_var>";
+				}
 				
 			}
 		}
