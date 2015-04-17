@@ -62,14 +62,17 @@ public map[str, map[str, value]] Generate(Specifications specifications) {
 		
 		set[Expr] exprs = {};
 		for(/and(op1, op2) := expression) {
-			exprs += op1;
-			exprs += op2;
+			// we don't want the internal and(s)
+			if (!(/and(_,_) := op1))
+				exprs += op1;
+			if (!(/and(_,_) := op2)) 
+				exprs += op2;
 		}
 		
 		if(isEmpty(exprs)) {
 			exprs = {expression};
 		}
-		
+
 		structure[pred_name] += ("body": exprs);
 		
 		

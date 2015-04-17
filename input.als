@@ -14,5 +14,19 @@ pred Drop (c, c' : Course, s: Student) {
 }
 pred SubmitForPair (c, c' : Course, s1 : Student, s2 : Student, bNew : Submission) {
 	// pre-condition
-	c'.work = c.work + (s1 -> bNew ) + (s2 -> bNew )
+	s1 in c.roster and
+	s2 in c.roster and
+	// update
+	c'.work = c.work + (s1 -> bNew) + (s2 -> bNew) and
+	// frame condition
+	c'.gradebook = c.gradebook 
+}
+pred AssignGrade (c, c' : Course, s : Student, b : Submission, g : Grade) {
+	c'.gradebook = c.gradebook + (s -> b -> g) and
+	c'.roster = c.roster 
+}
+fact SameGradeForPair {
+	all c : Course, s1 : Student , s2 : Student, b : Submission, |
+	b in (c.work [s1] & c.work [s2]) implies
+	c.gradebook [s1][b] = c.gradebook [s2][b]
 }

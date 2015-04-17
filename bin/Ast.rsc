@@ -7,7 +7,22 @@ alias Specifications = list[Specification];
 data Specification
 	= signature(Sig s)
 	| predicate(Pred p)
+	| fact(Fact f)
 	;
+	
+// facts
+alias Facts = list[Fact];
+
+data Fact = fact(FactName fact_name, list[Domain] domains, Expr expression);
+
+data Domain = domain(Quantifier quantifier, list[DomainVars] vars);
+
+data DomainVars = domain_vars(VariableName var, SigName sig);
+
+
+//data FactExpr = fact_expr(str expr);
+
+data FactName = fact_name(str name);
 
 // predictions
 
@@ -24,11 +39,13 @@ data Expr
 	| add(Expr lhsValue, Expr rhsValue)
 	| dec(Expr lhsValue, Expr rhsValue)
 	| and(Expr lhsValue, Expr rhsValue)
+	| then(Expr lhsValue, Expr rhsValue)
 	| set_var(Expr lhsValue, Expr rhsValue)
 	| negation(Expr notValue)
 	//| and_neg(Expr lhsValue, Expr rhsValue)
 	| \join(Expr lhsValue, Expr rhsValue)
 	| \in(Expr lhsValue, Expr rhsValue)
+	| logic_and(Expr lhsValue, Expr rhsValue)
 	| not_in(Expr lhsValue, Expr rhsValue)
 	| \tuple(Expr lhsValue, Expr rhsValue)
 	;
@@ -75,7 +92,7 @@ data BinaryRelation = binary_relation(RelationName relation_name, RelationName o
 
 data RelationName = relation_name(str name);
 
-data Quantifier = quantifier(str);
+data Quantifier = quantifier(str name);
 	//= q_all(str \all)
 	//| q_no(str no)
 	//| q_some(str some)

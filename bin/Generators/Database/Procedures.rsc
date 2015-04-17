@@ -8,6 +8,7 @@ import Set;
 import String;
 import Generators::Maps::Signatures;
 import Generators::Maps::Predicates;
+import Generators::Maps::Facts;
 import Node;
 
 public str Generate(list[Specification] specifications) {
@@ -88,7 +89,6 @@ public str Generate(list[Specification] specifications) {
 					else {
 						throw "error";
 					}
-					println(op2);
 					if(/input(var_name, id_name) := op2) {
 						where_id_name = toLowerCase(id_name);
 						where_var_name = var_name;
@@ -105,7 +105,7 @@ public str Generate(list[Specification] specifications) {
 					
 					
 					p_content += "\tIF EXISTS (";
-					p_content += "SELECT * FROM `<where_table>` WHERE `<where_id_name>_id`=<where_var_name>";
+					p_content += "SELECT id FROM `<where_table>` WHERE `<where_id_name>_id`=<where_var_name>";
 					p_content += " AND `<a_spec>_id`=<a_before_var>";
 					p_content += ") THEN\n";
 					p_content += "\t\tSELECT `An error has occurred, operation rollbacked and the stored procedure was terminated`;\n";
@@ -134,12 +134,113 @@ public str Generate(list[Specification] specifications) {
 					p_content += "DELETE FROM `<where_table>` WHERE `<where_id_name>_id`=<where_var_name>";
 					p_content += " AND `<a_spec>_id`=<a_before_var>";
 				}
+				for(/\in(op1, op2) := a) {
+					str where_table = "";
+					str where_id_name = "";
+					str where_var_name = "";
+					if(/table(name) := op2) {
+						where_table = toLowerCase(name);
+					}
+					else {
+						throw "error";
+					}
+					
+					if(/input(var_name, id_name) := op1) {
+						where_id_name = toLowerCase(id_name);
+						where_var_name = var_name;
+					}
+					//else {
+					//	throw "error";
+					//}
+					p_content += "\tIF NOT EXISTS (SELECT `id` FROM `<where_table>` WHERE `<where_id_name>_id`=<where_var_name>";
+					p_content += " AND `<a_spec>_id`=<a_before_var>";
+					p_content += ") THEN\n";
+					p_content += "\t\tINSERT INTO `<where_table>` (`<where_id_name>_id`, `<a_spec>_id`) VALUES(<where_var_name>, <a_before_var>)\n";
+					p_content += "\tEND IF;\n";
+				}
 				
 			}
 		}
 		//
 		query += ProcedureWrapperQuery(predicate_key, l, p_content) + "\n\r";
 		
+	}
+	
+	// facts
+	
+	map[str, map[str, value]] structureF = Generators::Maps::Facts::Generate(specifications);
+	for(fact_key <- structureF) {
+		f = structureF[fact_key];		
+		str f_content = "";
+		// vars
+		map[str,str] vars = ();
+		if(map[str,str] fvars := f["vars"]) {
+			vars = fvars;
+		}
+		// expr
+		Expr expression;
+		if(Expr expr := f["expr"]) {
+			expression = expr;
+		}
+	//all c : Course, s1 : Student , s2 : Student, b : Submission, |
+	//b in (c.work [s1] & c.work [s2]) implies
+	//c.gradebook [s1][b] = c.gradebook [s2][b]
+		println("---------");
+		for(/then(top1, top2) := expression) {
+			
+			if(/\in(iop1, iop2) := top1) {
+				str select_col = "";
+				if(/input(i_name, i_type) := iop1)
+					select_col = toLowerCase(vars[i_name]) + "_id";
+				println(select_col);
+				f_content += "\tSELECT table1.`<select_col>` FROM \n\t\t(";
+				
+				if(/logic_and(aop1, aop2) := iop2) {
+					str table1_name = "";
+					str grouper1 = "";
+					str table2_name = "";
+					str grouper2 = "";
+					
+					if(\join(jop1, jop2) := aop1) {
+						if(/table(name) := jop1)
+							table1_name = name;
+						
+						if(/input(name, c_type) := jop2)
+							grouper1 = toLowerCase(vars[name]);
+					}
+					if(\join(jop1, jop2) := aop2) {
+						if(/table(name) := jop1)
+							table2_name = name;
+						
+						if(/input(name, c_type) := jop2)
+							grouper2 = toLowerCase(vars[name]);
+					}
+					
+					if(table1_name == table2_name && grouper1 == grouper2) {
+						set[str] table_cols = structure[table1_name] - grouper1;
+						str group = "";
+						int i = 0;
+						for(col <- table_cols) {
+							group += "`<col>`";
+							if(i < size(table_cols)-1)
+								group += ",";
+							i += 1;
+						}
+						f_content += "SELECT * FROM `<table1_name>` GROUP BY <group> HAVING count(*)=2";
+					}
+					else {
+						throw "error";
+					}
+					
+				}
+				
+				f_content += ") table1";
+				
+			}
+			
+		}
+		
+		query += ProcedureWrapperQuery("f_" + fact_key, [], f_content) + "\n\r";
 	}
 	
 	

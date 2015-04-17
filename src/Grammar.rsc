@@ -5,7 +5,22 @@ start syntax Alloy = alloy: Specification* spec;
 syntax Specification  
 	= signature: Sig
 	| predicate: Pred
+	| fact: Fact
 	;
+	
+// facts
+
+start syntax Facts = facts: Fact*;
+
+syntax Fact = fact: "fact" FactName "{" Domain* Expr "}";
+
+syntax Domain = domain: Quantifier DomainVars+ "|";
+	
+syntax DomainVars = domain_vars: VariableName ":" SigName ",";
+
+//syntax FactExpr = fact_expr: [A-Za-z]+ fact_expr;
+
+lexical FactName = fact_name: [A-Za-z]+ fact_name;
 
 // predictions
 
@@ -32,10 +47,17 @@ syntax Expr
   )
   > set_var: Expr "=" Expr
   > \in: Expr "in" Expr
+  > logic_and: Expr "&" Expr
   | negation: "no" Expr
+  //| \all: "all" Expr
+  //| \some: "some" Expr
   | not_in: Expr "not in" Expr
+  //| assign: Expr ":" Expr
+  //| comma: Expr "," Expr
   | right \tuple: Expr "-\>" Expr
   > right and: Expr "and" Expr
+  > right then: Expr "implies" Expr
+  //> right seperator: Expr "|" Expr
   ;
 
 //syntax PredInput
