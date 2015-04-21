@@ -3,6 +3,7 @@ module ExtendedAst
 extend Ast;
 
 data Expr = table(str name);
+data Expr = tableV(str name, str var);
 data Expr = affected_table(str name);
 data Expr = input(str name, str \type);
 data Expr = notexists(Expr table, Expr col_id);

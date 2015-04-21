@@ -9,7 +9,6 @@ import Node;
 public map[str, map[str, value]] Generate(Specifications specifications) {
 	map[str, map[str, value]] structure = ();
 	Predicates predicates = PredicatesExtractor(specifications);
-	println(predicates);
 	for(p <- predicates) {
 		//iprintln(s.sig_name.name);
 		//s.sig_name.name = "";
@@ -77,7 +76,6 @@ public map[str, map[str, value]] Generate(Specifications specifications) {
 		
 		
 	}
-	println(structure);
 	return structure;
 }
 

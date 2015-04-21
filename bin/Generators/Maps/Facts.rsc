@@ -32,8 +32,8 @@ public map[str, map[str, value]] Generate(Specifications specifications) {
 			//case Expr and(operand1, operand2) => add(operand1, operand)
 			//case Expr self:set_var(operand1, operand2): structure[pred_name] = set_var(operand1, operand2, structure[pred_name]);
 			//case Expr self:add(operand1, operand2): structure[pred_name] = add(operand1, operand2, structure[pred_name]);
-			case point(variable(_), variable(str tableName)) => table(tableName)
-			case set_var(table(str tableName), op2) => set_var(affected_table(tableName), op2)
+			case point(variable(str var), variable(str tableName)) => tableV(tableName, var)
+			case set_var(tableV(str tableName, _), op2) => set_var(affected_table(tableName), op2)
 			case negation(\join(op1, op2)) => notexists(op1, op2)
 			//case not_in(Expr(op1), table(op2)) => del(op1, op2)
 			//case variable(str varName) => input(varName, sig_vars[varName])
@@ -47,7 +47,6 @@ public map[str, map[str, value]] Generate(Specifications specifications) {
 		structure += (fact_name: ("vars": vars,
 								  "expr": expression));
 		
-		println(expression);
 	}
 	
 	return structure;

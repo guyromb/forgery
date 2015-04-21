@@ -20,9 +20,20 @@ public str Generate(list[Specification] specifications) {
 		str p_content = "\tINSERT INTO `" + toLowerCase(table) + "` (`value`) VALUES (strVar);";
 		list[str] input = ["IN strVar VARCHAR(100)"];
 		if(isEmpty(structure[table])) // only if it's not a relation
-			query += ProcedureWrapperQuery("create_" + table, input, p_content) + "\n\r";
+			query += ProcedureWrapperQuery("create_" + table, input, p_content, true) + "\n\r";
 	}
 	
+	// get facts (required for predicates too)
+	map[str, map[str, value]] structureF = Generators::Maps::Facts::Generate(specifications);
+	str facts_caller = "\t-- facts list:\n";
+	x = 0;
+	for(fact_name <- structureF) {
+		facts_caller += "\tCALL f_<fact_name>(@f<x>);\n";
+		facts_caller += "\tIF @f<x>!=0 THEN\n\t\tROLLBACK;\n";
+		facts_caller += "\t\tSELECT `An error has occurred, operation rollbacked and the stored procedure was terminated`;\n";
+		facts_caller += "\tEND IF;";
+		x += 1;
+	}
 	
 	// procedures for pedicates
 	
@@ -131,8 +142,8 @@ public str Generate(list[Specification] specifications) {
 					else {
 						throw "error";
 					}
-					p_content += "DELETE FROM `<where_table>` WHERE `<where_id_name>_id`=<where_var_name>";
-					p_content += " AND `<a_spec>_id`=<a_before_var>";
+					p_content += "\tDELETE FROM `<where_table>` WHERE `<where_id_name>_id`=<where_var_name>";
+					p_content += " AND `<a_spec>_id`=<a_before_var>;";
 				}
 				for(/\in(op1, op2) := a) {
 					str where_table = "";
@@ -155,20 +166,20 @@ public str Generate(list[Specification] specifications) {
 					p_content += "\tIF NOT EXISTS (SELECT `id` FROM `<where_table>` WHERE `<where_id_name>_id`=<where_var_name>";
 					p_content += " AND `<a_spec>_id`=<a_before_var>";
 					p_content += ") THEN\n";
-					p_content += "\t\tINSERT INTO `<where_table>` (`<where_id_name>_id`, `<a_spec>_id`) VALUES(<where_var_name>, <a_before_var>)\n";
+					p_content += "\t\tINSERT INTO `<where_table>` (`<where_id_name>_id`, `<a_spec>_id`) VALUES(<where_var_name>, <a_before_var>);\n";
 					p_content += "\tEND IF;\n";
 				}
 				
 			}
 		}
+		
 		//
-		query += ProcedureWrapperQuery(predicate_key, l, p_content) + "\n\r";
+		query += ProcedureWrapperQuery(predicate_key, l, "<p_content>\n<facts_caller>", true) + "\n\r";
 		
 	}
 	
 	// facts
 	
-	map[str, map[str, value]] structureF = Generators::Maps::Facts::Generate(specifications);
 	for(fact_key <- structureF) {
 		f = structureF[fact_key];		
 		str f_content = "";
@@ -185,15 +196,11 @@ public str Generate(list[Specification] specifications) {
 	//all c : Course, s1 : Student , s2 : Student, b : Submission, |
 	//b in (c.work [s1] & c.work [s2]) implies
 	//c.gradebook [s1][b] = c.gradebook [s2][b]
-		println("---------");
 		for(/then(top1, top2) := expression) {
-			
+			str select_col = "";
 			if(/\in(iop1, iop2) := top1) {
-				str select_col = "";
 				if(/input(i_name, i_type) := iop1)
 					select_col = toLowerCase(vars[i_name]) + "_id";
-				println(select_col);
-				f_content += "\tSELECT table1.`<select_col>` FROM \n\t\t(";
 				
 				if(/logic_and(aop1, aop2) := iop2) {
 					str table1_name = "";
@@ -202,14 +209,14 @@ public str Generate(list[Specification] specifications) {
 					str grouper2 = "";
 					
 					if(\join(jop1, jop2) := aop1) {
-						if(/table(name) := jop1)
+						if(/tableV(name, _) := jop1)
 							table1_name = name;
 						
 						if(/input(name, c_type) := jop2)
 							grouper1 = toLowerCase(vars[name]);
 					}
 					if(\join(jop1, jop2) := aop2) {
-						if(/table(name) := jop1)
+						if(/tableV(name, _) := jop1)
 							table2_name = name;
 						
 						if(/input(name, c_type) := jop2)
@@ -217,16 +224,17 @@ public str Generate(list[Specification] specifications) {
 					}
 					
 					if(table1_name == table2_name && grouper1 == grouper2) {
-						set[str] table_cols = structure[table1_name] - grouper1;
-						str group = "";
-						int i = 0;
-						for(col <- table_cols) {
-							group += "`<col>`";
-							if(i < size(table_cols)-1)
-								group += ",";
-							i += 1;
-						}
-						f_content += "SELECT * FROM `<table1_name>` GROUP BY <group> HAVING count(*)=2";
+						//set[str] table_cols = structure[table1_name] - grouper1;
+						//str group = "";
+						//int i = 0;
+						//for(col <- table_cols) {
+						//	group += "`<col>`";
+						//	if(i < size(table_cols)-1)
+						//		group += ",";
+						//	i += 1;
+						//}
+						// TODO: number 2 -> variable based on size
+						f_content += "SELECT `<select_col>` FROM `<table1_name>` GROUP BY `<select_col>` HAVING count(*)=2";
 					}
 					else {
 						throw "error";
@@ -234,13 +242,79 @@ public str Generate(list[Specification] specifications) {
 					
 				}
 				
-				f_content += ") table1";
+			}
+			
+			// INNER JOIN
+			// c.gradebook [s1][b] = c.gradebook [s2][b]
+			if(/set_var(sop1, sop2) := top2) {
 				
+				set[str] join_inputs = {};
+				str join_table = "";
+				str join_table_var = "";
+				for(/\join(jjop1, jjop2) := sop1)  {
+					if ((\input(_,ival) := jjop1))
+						join_inputs += toLowerCase(ival);
+					elseif ((\input(_,ival) := jjop2))
+						join_inputs += toLowerCase(ival);
+						
+						
+					if(tableV(tname, vname) := jjop1) {
+						join_table = tname;
+						join_table_var = toLowerCase(vars[vname]);
+					}
+					elseif(tableV(tname, vname) := jjop2) {
+						join_table = tname;
+						join_table_var = toLowerCase(vars[vname]);
+					}
+						
+				}
+				
+				
+				set[str] table_cols = structure[join_table] - join_inputs - join_table_var;
+				str cmp_cols = "";
+				str where_cmp = "";
+				int i = 0;
+				for(col <- table_cols) {
+					cmp_cols += "SUBSTRING_INDEX(SUBSTRING_INDEX(GROUP_CONCAT(`<col>_id` SEPARATOR \',\'), \',\', 1), \',\', -1) AS `<col>1`,";
+					cmp_cols += "\n\t\t\tSUBSTRING_INDEX(SUBSTRING_INDEX(GROUP_CONCAT(`<col>_id` SEPARATOR \',\'), \',\', 2), \',\', -1) AS `<col>2`";
+					if(i < size(table_cols)-1)
+						cmp_cols += ",\n\t\t\t";
+					where_cmp += "cmp_data.`<col>1` \<\> cmp_data.`<col>2`";
+					
+					i += 1;
+				}
+				
+				//str group = "";
+				//int i = 0;
+				//for(col <- table_cols) {
+				//	group += "`<col>`";
+				//	if(i < size(table_cols)-1)
+				//		group += ",";
+				//	i += 1;
+				//}
+				
+				str tmp_content = f_content;
+				f_content = "\t\tSELECT * FROM(";
+				f_content += "\n\t\t\tSELECT \n\t\t\t\t<cmp_cols>\n\t\t\tFROM ("; // \n\t\t\tSELECT\n\t\t\t\ttable1.`<select_col>`\n\t\t\tFROM\n\t\t\t
+				f_content += "<tmp_content>";
+				f_content += ") table1";	
+				f_content += "\n\t\t\tINNER JOIN `<join_table>` on `<join_table>`.`<select_col>`=`table1`.`<select_col>`\n\t\t) cmp_data";
+				f_content += "\n\t\tWHERE\n\t\t\t<where_cmp>";
 			}
 			
 		}
 		
-		query += ProcedureWrapperQuery("f_" + fact_key, [], f_content) + "\n\r";
+		f_content = "\tIF EXISTS (\n<f_content>";
+		f_content += "\n\t) THEN\n";
+		f_content += "\t\tset return_value = 1;\n\tELSE set return_value = 0;\n";
+		f_content += "\tEND IF;";
+		
+		str exitq = "DECLARE EXIT HANDLER FOR SQLEXCEPTION";
+    	exitq += "\nBEGIN";
+    	exitq += "\n\tset return_value = 1;";
+    	exitq += "\nEND;\n\n";
+		
+		query += ProcedureWrapperQuery("f_" + fact_key, ["OUT return_value tinyint unsigned"], exitq + f_content, false) + "\n\r";
 	}
 	
 	
@@ -260,7 +334,7 @@ public str GenerateFromPredicates(list[Specification] specifications) {
 
 }
 
-public str ProcedureWrapperQuery(str procedure_name, list[str] inputs, str content_query) {
+public str ProcedureWrapperQuery(str procedure_name, list[str] inputs, str content_query, bool dec_rollback) {
 	procedure_name = toLowerCase(procedure_name);
 	str query = "DROP PROCEDURE IF EXISTS `" + procedure_name + "`;\n";
 	query += "DELIMITER //\nCREATE PROCEDURE `" + procedure_name + "`(";
@@ -271,9 +345,18 @@ public str ProcedureWrapperQuery(str procedure_name, list[str] inputs, str conte
 		if(input_key < size(inputs)-1)
 			query += ", ";
 	}
-	
 	query += ")\nBEGIN\n";
-	query += content_query;
+	if(dec_rollback) {
+		query += "DECLARE EXIT HANDLER FOR SQLEXCEPTION";
+    	query += "\nBEGIN";
+    	query += "\n\tROLLBACK;";
+    	query += "\nEND;\n\n";
+    	query += "START TRANSACTION;\n";
+    	query += content_query;
+		query += "\nCOMMIT;";
+	}	
+	else
+		query += content_query;
 	query += "\nEND //";
 	return query;
 }
