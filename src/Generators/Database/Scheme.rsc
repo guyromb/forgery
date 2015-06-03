@@ -94,30 +94,3 @@ public str TableQuery(str table_name, set[str] fields, str cardinality_type) {
 	query += "\n) ENGINE=InnoDB DEFAULT CHARSET=UTF8;";
 	return query;
 }
-
-
-//////////////////////////////
-
-//public str GenerateSig(list[Sig] signatures) {
-//	str query = "";
-//	map[str, list[str]] structure = MapBuilder(signatures);
-//	for(table <- structure) {
-//		query += TableQuery(table, structure[table]) + "\n\r";
-//	}
-//	return query;
-//}
-//
-//public map[str, list[str]] MapBuilderSig(list[Sig] signatures) {
-//	map[str, list[str]] scheme = ();
-//	for(s <- signatures) {
-//		//iprintln(s.sig_name.name);
-//		//s.sig_name.name = "";
-//		str sig_name = s.sig_name.name;
-//		list[Relation] relations = s.sig_block.relations;
-//		scheme += (sig_name : []);
-//		if(!isEmpty(relations))
-//			scheme += RelationsExtractor(sig_name, relations);
-//	}
-//	
-//	return scheme;
-//}
