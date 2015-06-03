@@ -84,9 +84,9 @@ data Relation
 	| binary(BinaryRelation binary)
 	;
 
-data UnaryRelation = unary_relation(RelationName relation_name, Quantifier, SigName operand1); //  RelationName, str Quantifier, str SigName
+data UnaryRelation = unary_relation(RelationName relation_name, Quantifier cardinality, SigName operand1); //  RelationName, str Quantifier, str SigName
 
-data BinaryRelation = binary_relation(RelationName relation_name, RelationName operand1, Quantifier, SigName operand2);
+data BinaryRelation = binary_relation(RelationName relation_name, RelationName operand1, Quantifier cardinality, SigName operand2);
 
 //data BinaryRelation = binary_relation(str); //  RelationName, str SigName, str Quantifier, str SigName
 

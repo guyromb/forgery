@@ -5,6 +5,7 @@ import List;
 import Set;
 import IO;
 import Node;
+import String;
 
 public map[str, map[str, value]] Generate(Specifications specifications) {
 	map[str, map[str, value]] structure = ();
@@ -46,8 +47,8 @@ public map[str, map[str, value]] Generate(Specifications specifications) {
 			//case Expr and(operand1, operand2) => add(operand1, operand)
 			//case Expr self:set_var(operand1, operand2): structure[pred_name] = set_var(operand1, operand2, structure[pred_name]);
 			//case Expr self:add(operand1, operand2): structure[pred_name] = add(operand1, operand2, structure[pred_name]);
-			case point(variable(_), variable(str tableName)) => table(tableName)
-			case set_var(table(str tableName), op2) => set_var(affected_table(tableName), op2)
+			case point(variable(str varName), variable(str tableName)) => ExtractTable(varName, tableName)
+			case set_var(table(str tableName, bool precond), op2) => set_var(affected_table(tableName, precond), op2)
 			case negation(\join(op1, op2)) => notexists(op1, op2)
 			//case not_in(Expr(op1), table(op2)) => del(op1, op2)
 			//case variable(str varName) => input(varName, sig_vars[varName])
@@ -55,8 +56,12 @@ public map[str, map[str, value]] Generate(Specifications specifications) {
 		}
 		
 		expression = visit(expression) {
-			case variable(str varName) => input(varName, sig_vars[varName])
+			case variable(str varName) => input(varName, ExtractVar(sig_vars, varName))
 			case \join(op1, op2) => exists(op1, op2)
+		}
+		
+		expression = visit(expression) {
+			case \in(op1, input(_, str tableName)) => \in(op1, table(tableName))
 		}
 		
 		set[Expr] exprs = {};
@@ -77,6 +82,21 @@ public map[str, map[str, value]] Generate(Specifications specifications) {
 		
 	}
 	return structure;
+}
+
+public Expr ExtractTable(str varName, str tableName) {
+	if(/[A-Za-z0-9_]*'$/ := varName) {
+		return table(tableName, false);
+	}
+	return table(tableName, true);
+}
+
+public str ExtractVar(map[str, str] sig_vars, varName) {
+
+if(varName in sig_vars)
+	return sig_vars[varName]; // if it's a variable, return the table name
+return varName; // if it's not a variable, it's already a table name
+
 }
 
 //public map[str, value] set_var(before, after, structure) {

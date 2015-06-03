@@ -69,9 +69,9 @@ syntax PredInput = pred_input: "," VariableName ":" SigName;
 
 //syntax SigVar = sig_var: VariableName ":" SigName ",";
 
-lexical PredName = pred_name: [A-Za-z]+ pred_name;
+lexical PredName = pred_name: [A-Za-z0-9]+ pred_name;
 
-lexical VariableName = variable_name: [0-9A-Za-z\']+ variable_name;
+lexical VariableName = variable_name: [0-9A-Za-z_\']+ variable_name;
 
 // signatures
 
@@ -91,7 +91,7 @@ syntax Relation
 syntax UnaryRelation = unary_relation: RelationName ":" Quantifier "_" SigName ",";
 syntax BinaryRelation = binary_relation: RelationName ":" RelationName "-\>" Quantifier "_" SigName ",";
 
-lexical RelationName = relation_name: [a-zA-Z]+ relation_name;
+lexical RelationName = relation_name: [a-zA-Z0-9]+ relation_name;
 
 lexical Quantifier = quantifier: [a-zA-Z]+;
 	//= q_all: "all" all

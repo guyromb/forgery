@@ -7,23 +7,34 @@ import Set;
 import IO;
 import String;
 
-public map[str, set[str]] Generate(Specifications specifications) {
-	map[str, set[str]] structure = ();
+public map[str, set[str]] getTables(Specifications specifications) {
+	map[str, set[str]] tables = ();
 	Signatures signatures = SignaturesExtractor(specifications);
 	for(s <- signatures) {
-		//iprintln(s.sig_name.name);
-		//s.sig_name.name = "";
-		str sig_name = s.sig_name.name;
+		str sig_name = toLowerCase(s.sig_name.name);
 		list[Relation] relations = s.sig_block.relations;
-		structure += (sig_name : {});
+		tables += (sig_name : {});
 		if(!isEmpty(relations))
-			structure += RelationsExtractor(sig_name, relations);
+			tables += TablesExtractor(sig_name, relations);
 	}
 	
-	structure = toLowerCase(structure);
-	structure = relationSimplifer(structure);
+	//tables = toLowerCase(tables);
+	tables = relationSimplifer(tables);
+	return tables;
+}
+
+public map[str, tuple[str, str]] getCardinalities(Specifications specifications) {
+	map[str, tuple[str, str]] cardinalities = ();
+	Signatures signatures = SignaturesExtractor(specifications);
+	for(s <- signatures) {
+		str sig_name = toLowerCase(s.sig_name.name);
+		list[Relation] relations = s.sig_block.relations;
+		if(!isEmpty(relations)) {
+			cardinalities += CardinalitiesExtractor(sig_name, relations);
+		}
+	}
 	
-	return structure;
+	return cardinalities;
 }
 
 // add sub-fields recursively
@@ -65,17 +76,26 @@ public Signatures SignaturesExtractor(Specifications specifications) {
 	return sigs;
 }
 
-public map[str, set[str]] RelationsExtractor(str parent_sig, list[Relation] relations) {
-	map[str, set[str]] structure = ();
+public map[str, tuple[str parentsig, str cardinality]] CardinalitiesExtractor(str parent_sig, list[Relation] relations) {
+	parent_sig = toLowerCase(parent_sig);
+	map[str, tuple[str, str]] cardinalities = ();
 	for(r <- relations) {
-		//println(typeOf(r));
-		//println(r.unary);
-		if(/UnaryRelation u := r) {
-			structure += (u.relation_name.name : {parent_sig, u.operand1.name});
-		}
-		elseif(/BinaryRelation b := r) {
-			structure += (b.relation_name.name : {parent_sig, b.operand1.name, b.operand2.name});
-		}
+		if(/UnaryRelation u := r)
+			cardinalities += (toLowerCase(u.relation_name.name): <parent_sig, toLowerCase(u.cardinality.name)>);
+		elseif(/BinaryRelation b := r)
+			cardinalities += (toLowerCase(b.relation_name.name): <parent_sig, toLowerCase(b.cardinality.name)>);
 	}
-	return structure;
+	return cardinalities;
+}
+
+public map[str, set[str]] TablesExtractor(str parent_sig, list[Relation] relations) {
+	parent_sig = toLowerCase(parent_sig);
+	map[str, set[str]] tables = ();
+	for(r <- relations) {
+		if(/UnaryRelation u := r)
+			tables += (toLowerCase(u.relation_name.name) : {parent_sig, toLowerCase(u.operand1.name)});
+		elseif(/BinaryRelation b := r)
+			tables += (toLowerCase(b.relation_name.name) : {parent_sig, toLowerCase(b.operand1.name), toLowerCase(b.operand2.name)});
+	}
+	return tables;
 }
